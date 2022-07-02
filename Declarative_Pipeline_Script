@@ -1,0 +1,63 @@
+pipeline{ 
+    agent any
+    tools {
+        maven "maven3.8.6"
+    }
+    stages{
+        stage('1cloning'){
+            steps{
+                sh "echo Apps latest version committed"
+                git "https://github.com/PinnacleTechSolutions/maven-web-application"
+            }
+        }
+        stage('2TestBuild'){
+            steps{
+                sh "mvn clean install"
+            }
+        }
+        stage('3CodeQuality'){
+            steps{
+                sh "mvn sonar:sonar"
+            } 
+        }
+        stage('4UploadNexus'){
+            steps{
+                sh "echo ready to upload artifacts"
+                sh "mvn deploy"
+            }
+        }
+        stage('5DeployTomcat'){
+            steps{
+                sh "echo ready for deployment"
+                deploy adapters: [tomcat9(credentialsId: 'Tomcat-credentials', path: '', url: 'http://35.183.239.57:8080/')], contextPath: null, war: 'target/*war'
+            }
+        }
+    }
+    post {
+        always {
+         emailext body: '''Hello,
+
+This job is a visa debit prod job.
+
+Regards,
+Pinnacle Tech Solutions''', recipientProviders: [developers()], subject: 'Job Status', to: 'Paulosayande@yahoo.com'   
+        }
+        success {
+        emailext body: '''Hello,
+
+This job succeeded.
+
+Regards,
+Pinnacle Tech Solutions''', recipientProviders: [developers()], subject: 'Job Status', to: 'Paulosayande@yahoo.com'    
+        }
+        failure {
+        emailext body: '''Hello,
+
+This job Failed.
+Please verify and troubleshoot.
+
+Regards,
+Pinnacle Tech Solutions''', recipientProviders: [developers()], subject: 'Job Status', to: 'Paulosayande@yahoo.com'    
+        }
+    }
+}
